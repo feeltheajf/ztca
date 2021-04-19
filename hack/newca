@@ -1,0 +1,9 @@
+#!/bin/sh
+
+OUT="testdata/pki"
+CRT="$OUT/ca.crt"
+KEY="$OUT/ca.key"
+
+openssl ecparam -name prime256v1 -genkey -noout -out "$KEY"
+
+openssl req -new -sha256 -x509 -subj '/CN=autotest' -key "$KEY" -out "$CRT"
