@@ -23,8 +23,12 @@ dev:
 		-- 
 
 .PHONY: test
-test: gosec
+test: gosec trufflehog
 
 .PHONY: gosec
 gosec: 
 	gosec ./...
+
+.PHONY: trufflehog
+trufflehog:
+	trufflehog3 .

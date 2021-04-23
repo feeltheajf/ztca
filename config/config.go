@@ -43,7 +43,7 @@ func Load(path string) (*Config, error) {
 }
 
 func load(path string, i interface{}) error {
-	b, err := ioutil.ReadFile(path) // #nosec: G304
+	b, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
 	}

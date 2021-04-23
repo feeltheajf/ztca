@@ -30,6 +30,8 @@ func recovery(c *gin.Context) {
 }
 
 func logging(c *gin.Context) {
+	requestID := uuid.NewString()
+	c.Header(headerRequestID, requestID)
 	now := time.Now()
 	c.Next()
 	code := c.Writer.Status()
@@ -37,7 +39,7 @@ func logging(c *gin.Context) {
 		Int("code", code).
 		Str("method", c.Request.Method).
 		Str("path", c.Request.RequestURI).
-		Str("request_id", uuid.NewString()).
+		Str("request_id", requestID).
 		Int64("elapsed_us", time.Since(now).Microseconds()).
 		Str("user_ip", c.ClientIP()).
 		Str("user_agent", c.GetHeader(headerUserAgent))

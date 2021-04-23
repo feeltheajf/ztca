@@ -9,7 +9,9 @@ import (
 )
 
 const (
+	// TODO use values from ztunnel/x/http
 	headerAPIToken  = "X-Api-Token" // #nosec: G101
+	headerRequestID = "X-Request-Id"
 	headerUserAgent = "User-Agent"
 
 	contextError = "error"
@@ -68,7 +70,11 @@ func setupRoutes(cfg *HTTP) error {
 	v1 := api.Group("/v1")
 	v1.Use(hasToken)
 	{
-		v1.POST("/requests/yubikey", requestYubiKeyCertificate)
+		v1.POST("/requests/yubikey", yubikey)
+
+		v1.GET("/requests/nonce", nonce)
+		v1.POST("/requests/generate", generate)
+		v1.POST("/requests/activate", activate)
 	}
 
 	server.Handler = r

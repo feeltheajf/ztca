@@ -1,65 +1,41 @@
 package api
 
 import (
-	"fmt"
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/go-piv/piv-go/piv"
-	"github.com/rs/zerolog/log"
 
+	"github.com/feeltheajf/ztca/errdefs"
 	"github.com/feeltheajf/ztca/pki"
 )
 
-type certificateRequest struct {
-	Att    []byte `json:"att"`
-	IntAtt []byte `json:"intAtt"`
+type yubikeyRequest struct {
+	Att    []byte `json:"att" binding:"required"`
+	IntAtt []byte `json:"intAtt" binding:"required"`
 }
 
-type certificateResponse struct {
-	Crt []byte `json:"crt"`
-}
-
-func requestYubiKeyCertificate(c *gin.Context) {
-	q := new(certificateRequest)
+func yubikey(c *gin.Context) {
+	q := new(yubikeyRequest)
 	if err := c.Bind(q); err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
+		handle(c, errdefs.InvalidParameter(err))
+		return
 	}
 
 	att, err := pki.UnmarshalCertificate(q.Att)
 	if err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
+		handle(c, errdefs.InvalidParameter("bad attestation certificate").CausedBy(err))
+		return
 	}
 
 	intAtt, err := pki.UnmarshalCertificate(q.IntAtt)
 	if err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
+		handle(c, errdefs.InvalidParameter("bad intermediate attestation certificate").CausedBy(err))
+		return
 	}
 
 	if _, err := piv.Verify(intAtt, att); err != nil {
-		c.AbortWithError(http.StatusBadRequest, err)
+		handle(c, errdefs.InvalidParameter("failed to verify attestation").CausedBy(err))
+		return
 	}
 
-	s := getSession(c)
-	t, err := pki.NewTemplate(pki.WithCommonName(s.User.Name))
-	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
-	}
-
-	crt, err := pki.NewCertificate(t, att.PublicKey)
-	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
-	}
-
-	b, err := pki.MarshalCertificate(crt)
-	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
-	}
-
-	log.Info().
-		Str("serial", fmt.Sprintf("%d", crt.SerialNumber)).
-		Str("user", s.User.Name).
-		Msg("new certificate")
-
-	c.JSON(http.StatusCreated, &certificateResponse{b})
+	issueCertificate(c, att.PublicKey)
 }
