@@ -1,8 +1,0 @@
-no_history: true
-skip_paths:
-  # directories
-  - vendor
-  - testdata/pki
-  # files
-  - go.mod
-  - go.sum

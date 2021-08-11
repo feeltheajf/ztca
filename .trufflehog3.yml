@@ -1,0 +1,16 @@
+no_history: true
+
+exclude:
+  - message: Go lock files
+    paths:
+      - go.mod
+      - go.sum
+  - message: 3rd party dependencies
+    paths:
+      - vendor
+  - message: Auto-generated test data
+    paths:
+      - testdata/pki
+  - message: Test certificates
+    paths:
+      - testdata/tpm
