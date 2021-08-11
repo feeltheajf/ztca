@@ -9,25 +9,44 @@ import (
 
 	"github.com/feeltheajf/ztca/api"
 	"github.com/feeltheajf/ztca/dto"
+	"github.com/feeltheajf/ztca/log"
 	"github.com/feeltheajf/ztca/pki"
-	"github.com/feeltheajf/ztca/x/fs"
-	"github.com/feeltheajf/ztca/x/log"
 )
 
 const (
-	App         = "ztca"
-	DefaultPath = App + ".yml"
+	App  = "ztca"
+	File = App + ".yml"
+
+	permissionsFile      = 0600
+	permissionsDirectory = 0700
 )
 
 var (
-	DefaultDir = path.Join(fs.UserConfigDir(), App)
+	root string
 )
 
 func init() {
-	err := fs.Mkdir(DefaultDir)
+	home, err := os.UserHomeDir()
 	if err != nil {
 		panic(err)
 	}
+
+	root = path.Join(home, App)
+	if err := Mkdir(root); err != nil {
+		panic(err)
+	}
+}
+
+func Path(elem ...string) string {
+	return path.Join(append([]string{root}, elem...)...)
+}
+
+func Mkdir(dir string) error {
+	return os.MkdirAll(dir, permissionsDirectory)
+}
+
+func Write(file string, data []byte) error {
+	return ioutil.WriteFile(file, data, permissionsFile)
 }
 
 type Config struct {
@@ -38,24 +57,16 @@ type Config struct {
 }
 
 func Load(path string) (*Config, error) {
-	cfg := new(Config)
-	return cfg, load(path, cfg)
-}
-
-func load(path string, i interface{}) error {
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	cfg := new(Config)
 	b = []byte(os.ExpandEnv(string(b)))
-	if err := yaml.UnmarshalStrict(b, i); err != nil {
-		return err
+	if err := yaml.UnmarshalStrict(b, cfg); err != nil {
+		return nil, err
 	}
 
-	return nil
-}
-
-func Path(filename string) string {
-	return path.Join(DefaultDir, filename)
+	return cfg, nil
 }

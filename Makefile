@@ -1,4 +1,5 @@
 APP = ztca
+COV = coverage.out
 
 GIN_PORT ?= 5000
 APP_PORT ?= 3000
@@ -20,15 +21,20 @@ dev:
 		--port $(GIN_PORT) \
 		--appPort $(APP_PORT) \
 		run \
-		-- 
+		--
 
 .PHONY: test
-test: gosec trufflehog
+test: unittest gosec trufflehog
+
+.PHONY: unittest
+unittest:
+	go test -v -race -coverprofile=$(COV) ./... \
+		&& go tool cover -func $(COV)
 
 .PHONY: gosec
-gosec: 
+gosec:
 	gosec ./...
 
 .PHONY: trufflehog
 trufflehog:
-	trufflehog3 .
+	trufflehog3

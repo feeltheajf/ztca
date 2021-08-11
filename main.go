@@ -9,12 +9,12 @@ import (
 	"github.com/feeltheajf/ztca/api"
 	"github.com/feeltheajf/ztca/config"
 	"github.com/feeltheajf/ztca/dto"
+	"github.com/feeltheajf/ztca/log"
 	"github.com/feeltheajf/ztca/pki"
-	"github.com/feeltheajf/ztca/x/log"
 )
 
 var cmd = &cobra.Command{
-	Use: "ztca",
+	Use: config.App,
 	Run: serve,
 }
 
@@ -42,7 +42,7 @@ func fatal(err error) {
 }
 
 func main() {
-	cmd.PersistentFlags().StringVarP(&flags.config, "config", "c", "ztca.yml", "path to config file")
+	cmd.PersistentFlags().StringVarP(&flags.config, "config", "c", config.File, "path to config file")
 
 	if err := cmd.Execute(); err != nil {
 		os.Exit(64)

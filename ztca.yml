@@ -1,13 +1,11 @@
 log:
   level: debug
-  format: text
 
 api:
   http:
     address: 127.0.0.1:9443
-  auth: 
-    apiToken: ${ZTCA_API_TOKEN}
 
+# TODO storage
 db:
   url: ztca.sqlite3
   driver: sqlite3

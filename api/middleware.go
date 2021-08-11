@@ -6,7 +6,6 @@ import (
 	"runtime/debug"
 	"time"
 
-	"github.com/feeltheajf/ztca/errdefs"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -30,7 +29,10 @@ func recovery(c *gin.Context) {
 }
 
 func logging(c *gin.Context) {
-	requestID := uuid.NewString()
+	requestID := c.GetHeader(headerRequestID)
+	if requestID == "" {
+		requestID = uuid.NewString()
+	}
 	c.Header(headerRequestID, requestID)
 	now := time.Now()
 	c.Next()
@@ -43,13 +45,6 @@ func logging(c *gin.Context) {
 		Int64("elapsed_us", time.Since(now).Microseconds()).
 		Str("user_ip", c.ClientIP()).
 		Str("user_agent", c.GetHeader(headerUserAgent))
-
-	s := getSession(c)
-	if s != nil {
-		ctx = ctx.
-			Str("session_id", s.UUID).
-			Str("user", s.User.Name)
-	}
 
 	if v, ok := c.Get(contextError); ok {
 		err := v.(error)
@@ -67,11 +62,4 @@ func logging(c *gin.Context) {
 		event = logger.Error()
 	}
 	event.Msg("request")
-}
-
-func hasToken(c *gin.Context) {
-	apiToken := c.GetHeader(headerAPIToken)
-	if apiToken == "" || apiToken != config.Auth.APIToken {
-		handle(c, errdefs.Forbidden("invalid API token"))
-	}
 }

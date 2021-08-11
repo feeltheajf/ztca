@@ -5,8 +5,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"io/ioutil"
-
-	"github.com/feeltheajf/ztca/x/fs"
 )
 
 // ReadCertificate loads certificate from file
@@ -15,32 +13,23 @@ func ReadCertificate(filename string) (*x509.Certificate, error) {
 	if err != nil {
 		return nil, err
 	}
-	return UnmarshalCertificate(b)
+	return UnmarshalCertificate(string(b))
 }
 
 // UnmarshalCertificate parses certificate from PEM-encoded bytes
-func UnmarshalCertificate(raw []byte) (*x509.Certificate, error) {
-	block, _ := pem.Decode(raw)
+func UnmarshalCertificate(raw string) (*x509.Certificate, error) {
+	block, _ := pem.Decode([]byte(raw))
 	if block == nil {
 		return nil, errors.New("failed to parse certificate: invalid PEM")
 	}
 	return x509.ParseCertificate(block.Bytes)
 }
 
-// WriteCertificate saves certificate to file
-func WriteCertificate(filename string, crt *x509.Certificate) error {
-	raw, err := MarshalCertificate(crt)
-	if err != nil {
-		return err
-	}
-	return fs.WriteFile(filename, raw)
-}
-
 // MarshalCertificate returns PEM encoding of crt
-func MarshalCertificate(crt *x509.Certificate) ([]byte, error) {
+func MarshalCertificate(crt *x509.Certificate) (string, error) {
 	block := &pem.Block{
 		Type:  pemTypeCertificate,
 		Bytes: crt.Raw,
 	}
-	return pem.EncodeToMemory(block), nil
+	return string(pem.EncodeToMemory(block)), nil
 }

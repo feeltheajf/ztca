@@ -9,8 +9,6 @@ import (
 )
 
 const (
-	// TODO use values from ztunnel/x/http
-	headerAPIToken  = "X-Api-Token" // #nosec: G101
 	headerRequestID = "X-Request-Id"
 	headerUserAgent = "User-Agent"
 
@@ -19,24 +17,18 @@ const (
 
 var (
 	server *http.Server
-	config *Config
 )
 
 type Config struct {
 	HTTP *HTTP `yaml:"http"`
-	Auth *Auth `yaml:"auth"`
 }
 
 type HTTP struct {
 	Address string `yaml:"address"`
 }
 
-type Auth struct {
-	APIToken string `yaml:"apiToken"`
-}
-
 func Serve() error {
-	// TODO TLS support
+	// TODO mTLS support
 	log.Info().
 		Str("address", server.Addr).
 		Msg("running HTTP server")
@@ -50,7 +42,6 @@ func Setup(cfg *Config) error {
 		WriteTimeout: time.Second * 10,
 		IdleTimeout:  time.Second * 10,
 	}
-	config = cfg
 
 	if err := setupRoutes(cfg.HTTP); err != nil {
 		return err
@@ -68,13 +59,8 @@ func setupRoutes(cfg *HTTP) error {
 
 	api := r.Group("/api")
 	v1 := api.Group("/v1")
-	v1.Use(hasToken)
 	{
-		v1.POST("/requests/yubikey", yubikey)
-
-		v1.GET("/requests/nonce", nonce)
-		v1.POST("/requests/generate", generate)
-		v1.POST("/requests/activate", activate)
+		v1.POST("/yubikey", yubikey)
 	}
 
 	server.Handler = r

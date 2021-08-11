@@ -11,9 +11,8 @@ import (
 )
 
 const (
-	pemTypeCertificate  = "CERTIFICATE"
-	pemTypeECPrivateKey = "EC PRIVATE KEY"
-	pemTypePublicKey    = "PUBLIC KEY"
+	pemTypeCertificate = "CERTIFICATE"
+	pemTypePublicKey   = "PUBLIC KEY"
 )
 
 var (
@@ -22,6 +21,7 @@ var (
 
 	defaultKeyUsageCA = x509.KeyUsageCertSign | x509.KeyUsageCRLSign
 
+	// TODO fix key usages
 	defaultKeyUsageProxy    = x509.KeyUsageDigitalSignature
 	defaultExtKeyUsageProxy = []x509.ExtKeyUsage{
 		x509.ExtKeyUsageClientAuth,
@@ -115,11 +115,4 @@ func WithCommonName(commonName string) TemplateOption {
 			CommonName: commonName,
 		},
 	)
-}
-
-func WithDNSDomains(dnsDomains ...string) TemplateOption {
-	return func(template *x509.Certificate) error {
-		template.PermittedDNSDomains = dnsDomains
-		return WithCommonName(dnsDomains[0])(template)
-	}
 }

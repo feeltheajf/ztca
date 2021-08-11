@@ -3,16 +3,26 @@ package dto
 import (
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
 )
 
+var (
+	Validate *validator.Validate
+)
+
+func init() {
+	Validate = validator.New()
+	Validate.SetTagName("binding")
+}
+
 // Model is a base model for db interaction
 type Model struct {
-	ID        uuid.UUID  `json:"id" gorm:"primary_key"`
-	CreatedAt time.Time  `json:"createdAt"`
-	UpdatedAt time.Time  `json:"updatedAt"`
-	DeletedAt *time.Time `json:"deletedAt,omitempty"`
+	ID        uuid.UUID  `json:"-" gorm:"primary_key"`
+	CreatedAt time.Time  `json:"-"`
+	UpdatedAt time.Time  `json:"-"`
+	DeletedAt *time.Time `json:"-"`
 }
 
 // BeforeCreate implements UUID generation for new resources

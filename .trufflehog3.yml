@@ -11,6 +11,3 @@ exclude:
   - message: Auto-generated test data
     paths:
       - testdata/pki
-  - message: Test certificates
-    paths:
-      - testdata/tpm
