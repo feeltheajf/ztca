@@ -7,7 +7,6 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/base64"
-	"fmt"
 
 	"golang.org/x/crypto/ssh"
 
@@ -25,7 +24,7 @@ func NewPrivateKey() (*ecdsa.PrivateKey, error) {
 }
 
 // ReadPrivateKey loads private key from file
-func ReadPrivateKey(filename string) (crypto.PrivateKey, error) {
+func ReadPrivateKey(filename string) (*ecdsa.PrivateKey, error) {
 	raw, err := fs.Read(filename)
 	if err != nil {
 		return nil, err
@@ -34,7 +33,7 @@ func ReadPrivateKey(filename string) (crypto.PrivateKey, error) {
 }
 
 // UnmarshalPrivateKey parses private key from PEM-encoded string
-func UnmarshalPrivateKey(raw string) (crypto.PrivateKey, error) {
+func UnmarshalPrivateKey(raw string) (*ecdsa.PrivateKey, error) {
 	block, err := decode(raw)
 	if err != nil {
 		return nil, err
@@ -43,7 +42,7 @@ func UnmarshalPrivateKey(raw string) (crypto.PrivateKey, error) {
 }
 
 // WritePrivateKey saves private key to file
-func WritePrivateKey(filename string, key crypto.PrivateKey) error {
+func WritePrivateKey(filename string, key *ecdsa.PrivateKey) error {
 	raw, err := MarshalPrivateKey(key)
 	if err != nil {
 		return err
@@ -52,23 +51,12 @@ func WritePrivateKey(filename string, key crypto.PrivateKey) error {
 }
 
 // MarshalPrivateKey returns PEM encoding of key
-func MarshalPrivateKey(key crypto.PrivateKey) (string, error) {
-	var b []byte
-	var err error
-	var t PEMType
-
-	switch k := key.(type) {
-	case *ecdsa.PrivateKey:
-		t = PEMTypeECPrivateKey
-		b, err = x509.MarshalECPrivateKey(k)
-	default:
-		return "", fmt.Errorf("unsupported private key type: %T", key)
-	}
+func MarshalPrivateKey(key *ecdsa.PrivateKey) (string, error) {
+	raw, err := x509.MarshalECPrivateKey(key)
 	if err != nil {
 		return "", err
 	}
-
-	return encode(t, b), nil
+	return encode(PEMTypeECPrivateKey, raw), nil
 }
 
 // WritePublicKey saves public key to file

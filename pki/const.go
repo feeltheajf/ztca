@@ -12,8 +12,7 @@ const (
 	PEMTypeCertificateRequest PEMType = "CERTIFICATE REQUEST"
 )
 
-// CRLReason is used for designating certificate revocation reason.
-// See
+// CRLReason is used for designating certificate revocation reason
 type CRLReason string
 
 // Known CRL reasons

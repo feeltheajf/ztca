@@ -5,6 +5,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite" // GORM driver for sqlite3
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -14,6 +15,8 @@ const (
 )
 
 var (
+	ctx zerolog.Logger
+
 	all = []interface{}{
 		&Certificate{},
 	}
@@ -30,6 +33,8 @@ type Config struct {
 
 // Setup initializes the database connection
 func Setup(cfg *Config) (err error) {
+	ctx = log.With().Str("module", "db").Logger()
+
 	db, err = gorm.Open(cfg.Driver, cfg.URL)
 	if err != nil {
 		return err
@@ -66,7 +71,7 @@ func (l *sqlLogger) Print(values ...interface{}) {
 	result := values[2]
 
 	if level == levelDebug {
-		log.Debug().
+		ctx.Debug().
 			Int64("elapsed_us", result.(time.Duration).Microseconds()).
 			Str("sql", values[3].(string)).
 			Interface("values", values[4]).
@@ -81,7 +86,7 @@ func (l *sqlLogger) Print(values ...interface{}) {
 			// errors are logged by middleware
 			break
 		default:
-			log.Info().
+			ctx.Info().
 				Interface("result", result).
 				Msg(message)
 		}
