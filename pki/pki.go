@@ -103,7 +103,7 @@ func NewCertificate(template *x509.Certificate, pub crypto.PublicKey) (*dto.Cert
 
 	crt := &dto.Certificate{
 		Raw:          encode(PEMTypeCertificate, b),
-		SerialNumber: MarshalCertificateSerial(template.SerialNumber),
+		SerialNumber: MarshalSerial(template.SerialNumber),
 		ExpiresAt:    template.NotAfter,
 		Username:     template.Subject.CommonName,
 		DeviceSerial: template.Subject.SerialNumber,
@@ -151,7 +151,7 @@ func Revoke(crt *dto.Certificate, reason CRLReason, when time.Time) error {
 	}
 
 	revoke := pkix.RevokedCertificate{
-		SerialNumber:   UnmarshalCertificateSerial(crt.SerialNumber),
+		SerialNumber:   UnmarshalSerial(crt.SerialNumber),
 		RevocationTime: when,
 		Extensions: []pkix.Extension{
 			{

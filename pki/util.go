@@ -4,26 +4,8 @@ import (
 	"crypto/rand"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"math/big"
 )
-
-// MarshalCertificateSerial converts certificate serial to string
-func MarshalCertificateSerial(serial *big.Int) string {
-	return fmt.Sprintf("%X", serial)
-}
-
-// MarshalCertificateSerial converts string to certificate serial
-func UnmarshalCertificateSerial(serial string) *big.Int {
-	srl := new(big.Int)
-	srl.SetString(serial, 16)
-	return srl
-}
-
-// MarshalYubiKeySerial converts YubiKey serial to string
-func MarshalYubiKeySerial(serial uint32) string {
-	return fmt.Sprintf("%d", serial)
-}
 
 func encode(t PEMType, b []byte) string {
 	block := &pem.Block{
