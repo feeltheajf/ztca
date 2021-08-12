@@ -59,10 +59,24 @@ func issueCertificate(c *gin.Context) {
 		return
 	}
 
-	crt, err := pki.NewCertificate(t, att.PublicKey)
+	x509, err := pki.NewCertificate(t, att.PublicKey)
 	if err != nil {
 		handle(c, errdefs.Unknown("failed to issue certificate").CausedBy(err))
 		return
+	}
+
+	raw, err := pki.MarshalCertificate(x509)
+	if err != nil {
+		handle(c, errdefs.Unknown("failed to marshal certificate").CausedBy(err))
+		return
+	}
+
+	crt := &dto.Certificate{
+		Raw:          raw,
+		SerialNumber: pki.MarshalSerial(x509.SerialNumber),
+		ExpiresAt:    x509.NotAfter,
+		Username:     x509.Subject.CommonName,
+		DeviceSerial: x509.Subject.SerialNumber,
 	}
 
 	if err := dto.Certificates.Save(crt); err != nil {

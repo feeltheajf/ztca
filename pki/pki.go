@@ -72,7 +72,7 @@ func Setup(cfg *Config) (err error) {
 }
 
 // NewCertificate issues a new certificate using the given template
-func NewCertificate(template *x509.Certificate, pub crypto.PublicKey) (*dto.Certificate, error) {
+func NewCertificate(template *x509.Certificate, pub crypto.PublicKey) (*x509.Certificate, error) {
 	template.BasicConstraintsValid = true
 
 	if template.NotBefore.IsZero() {
@@ -97,21 +97,18 @@ func NewCertificate(template *x509.Certificate, pub crypto.PublicKey) (*dto.Cert
 
 	b, err := x509.CreateCertificate(rand.Reader, template, caCrt, pub, caKey)
 	if err != nil {
-		return nil, errdefs.Unknown(err)
+		return nil, errdefs.Unknown("failed to issue certificate").CausedBy(err)
 	}
 
-	crt := &dto.Certificate{
-		Raw:          encode(PEMTypeCertificate, b),
-		SerialNumber: MarshalSerial(template.SerialNumber),
-		ExpiresAt:    template.NotAfter,
-		Username:     template.Subject.CommonName,
-		DeviceSerial: template.Subject.SerialNumber,
+	crt, err := x509.ParseCertificate(b)
+	if err != nil {
+		return nil, errdefs.Unknown("failed to parse certificate").CausedBy(err)
 	}
 
 	ctx.Info().
-		Str("serial", crt.SerialNumber).
-		Str("username", crt.Username).
-		Str("device_serial", crt.DeviceSerial).
+		Str("serial", MarshalSerial(crt.SerialNumber)).
+		Str("username", crt.Subject.CommonName).
+		Str("device_serial", crt.Subject.SerialNumber).
 		Msg("certificate issued")
 	return crt, nil
 }
