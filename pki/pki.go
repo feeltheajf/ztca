@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/feeltheajf/ztca/dto"
@@ -19,6 +20,7 @@ import (
 )
 
 var (
+	ctx    zerolog.Logger
 	lock   sync.RWMutex
 	config *Config
 
@@ -49,6 +51,7 @@ type Config struct {
 
 // Setup initializes CA
 func Setup(cfg *Config) (err error) {
+	ctx = log.With().Str("module", "ca").Logger()
 	config = cfg
 
 	caCrt, err = ReadCertificate(cfg.Certificate)
@@ -105,6 +108,12 @@ func NewCertificate(template *x509.Certificate, pub crypto.PublicKey) (*dto.Cert
 		Username:     template.Subject.CommonName,
 		DeviceSerial: template.Subject.SerialNumber,
 	}
+
+	ctx.Info().
+		Str("serial", crt.SerialNumber).
+		Str("username", crt.Username).
+		Str("device_serial", crt.DeviceSerial).
+		Msg("certificate issued")
 	return crt, nil
 }
 
@@ -151,7 +160,17 @@ func Revoke(crt *dto.Certificate, reason CRLReason, when time.Time) error {
 			},
 		},
 	}
-	return NewRevocationList(revoke)
+
+	if err := NewRevocationList(revoke); err != nil {
+		return err
+	}
+
+	ctx.Info().
+		Str("serial", crt.SerialNumber).
+		Str("username", crt.Username).
+		Str("device_serial", crt.DeviceSerial).
+		Msg("certificate revoked")
+	return nil
 }
 
 // NewRevocationList issues a new certificate revocation list
@@ -184,6 +203,10 @@ func NewRevocationList(revoke ...pkix.RevokedCertificate) error {
 		return errdefs.Unknown("failed to save crl").CausedBy(err)
 	}
 
+	ctx.Info().
+		Str("number", crl.Number.String()).
+		Int("revoked", len(crl.RevokedCertificates)).
+		Msg("crl issued")
 	return nil
 }
 

@@ -37,7 +37,7 @@ func logging(c *gin.Context) {
 	now := time.Now()
 	c.Next()
 	code := c.Writer.Status()
-	ctx := log.With().
+	ctx := ctx.With().
 		Int("code", code).
 		Str("method", c.Request.Method).
 		Str("path", c.Request.RequestURI).

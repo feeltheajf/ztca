@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-piv/piv-go/piv"
-	"github.com/rs/zerolog/log"
 
 	"github.com/feeltheajf/ztca/dto"
 	"github.com/feeltheajf/ztca/errdefs"
@@ -71,12 +70,6 @@ func issueCertificate(c *gin.Context) {
 		return
 	}
 
-	log.Info().
-		Str("serial", crt.SerialNumber).
-		Str("username", crt.Username).
-		Str("device_serial", crt.DeviceSerial).
-		Msg("certificate issued")
-
 	c.String(http.StatusCreated, crt.Raw)
 }
 
@@ -103,12 +96,6 @@ func revokeCertificate(c *gin.Context) {
 			handle(c, errdefs.Unknown("failed to delete certificate").CausedBy(err))
 			return
 		}
-
-		log.Info().
-			Str("serial", crt.SerialNumber).
-			Str("username", crt.Username).
-			Str("device_serial", crt.DeviceSerial).
-			Msg("certificate revoked")
 	}
 
 	c.String(http.StatusNoContent, "")

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -16,6 +17,7 @@ const (
 )
 
 var (
+	ctx    zerolog.Logger
 	server *http.Server
 )
 
@@ -28,13 +30,15 @@ type HTTP struct {
 }
 
 func Serve() error {
-	log.Info().
+	ctx.Info().
 		Str("address", server.Addr).
 		Msg("running HTTP server")
 	return server.ListenAndServe()
 }
 
 func Setup(cfg *Config) error {
+	ctx = log.With().Str("module", "api").Logger()
+
 	server = &http.Server{
 		Addr:         cfg.HTTP.Address,
 		ReadTimeout:  time.Second * 10,
