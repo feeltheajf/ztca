@@ -1,13 +1,13 @@
 package config
 
 import (
-	"io/ioutil"
 	"os"
 
 	"gopkg.in/yaml.v2"
 
 	"github.com/feeltheajf/ztca/api"
 	"github.com/feeltheajf/ztca/dto"
+	"github.com/feeltheajf/ztca/fs"
 	"github.com/feeltheajf/ztca/log"
 	"github.com/feeltheajf/ztca/pki"
 )
@@ -25,16 +25,21 @@ type Config struct {
 }
 
 func Load(path string) (*Config, error) {
-	b, err := ioutil.ReadFile(path)
+	raw, err := fs.Read(path)
 	if err != nil {
 		return nil, err
 	}
 
-	cfg := new(Config)
-	b = []byte(os.ExpandEnv(string(b)))
-	if err := yaml.UnmarshalStrict(b, cfg); err != nil {
+	cfg := defaultConfig()
+	if err := yaml.UnmarshalStrict([]byte(os.ExpandEnv(raw)), cfg); err != nil {
 		return nil, err
 	}
 
 	return cfg, nil
+}
+
+func defaultConfig() *Config {
+	return &Config{
+		//
+	}
 }
