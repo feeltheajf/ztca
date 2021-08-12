@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
-	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -98,7 +97,7 @@ func NewCertificate(template *x509.Certificate, pub crypto.PublicKey) (*dto.Cert
 
 	b, err := x509.CreateCertificate(rand.Reader, template, caCrt, pub, caKey)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create certificate: %s", err)
+		return nil, errdefs.Unknown(err)
 	}
 
 	crt := &dto.Certificate{
