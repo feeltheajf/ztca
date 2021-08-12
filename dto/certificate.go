@@ -1,11 +1,11 @@
 package dto
 
 import (
-	"fmt"
-	"math/big"
 	"time"
+)
 
-	"github.com/feeltheajf/ztca/pki"
+var (
+	Certificates = &certificatesService{}
 )
 
 type Certificate struct {
@@ -13,32 +13,22 @@ type Certificate struct {
 	Raw          string    `json:"raw"`
 	SerialNumber string    `json:"serialNumber"`
 	ExpiresAt    time.Time `json:"expiresAt"`
-
+	// user metadata
 	Username     string `json:"username"`
 	DeviceSerial string `json:"deviceSerial"`
 }
 
-func UnmarshalCertificate(raw string) (*Certificate, error) {
-	x509, err := pki.UnmarshalCertificate(raw)
-	if err != nil {
-		return nil, err
-	}
+type certificatesService service
 
-	crt := &Certificate{
-		Raw:          raw,
-		SerialNumber: FormatCertificateSerial(x509.SerialNumber),
-		ExpiresAt:    x509.NotAfter,
-		Username:     x509.Subject.CommonName,
-		DeviceSerial: x509.Subject.SerialNumber,
-	}
-
-	return crt, nil
+func (cs *certificatesService) Save(crt *Certificate) error {
+	return db.Create(crt).Error
 }
 
-func FormatCertificateSerial(serial *big.Int) string {
-	return fmt.Sprintf("%X", serial)
+func (cs *certificatesService) Load(username string) (*Certificate, error) {
+	crt := new(Certificate)
+	return crt, db.Where("username = ?", username).First(crt).Error
 }
 
-func FormatYubiKeySerial(serial uint32) string {
-	return fmt.Sprintf("%d", serial)
+func (cs *certificatesService) Delete(crt *Certificate) error {
+	return db.Delete(crt).Error
 }

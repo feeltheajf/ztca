@@ -6,9 +6,12 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
-	"encoding/pem"
-	"errors"
-	"io/ioutil"
+	"encoding/base64"
+	"fmt"
+
+	"golang.org/x/crypto/ssh"
+
+	"github.com/feeltheajf/ztca/fs"
 )
 
 var (
@@ -17,26 +20,64 @@ var (
 )
 
 // NewPrivateKey generates new private key using `EllipticCurve`
-func NewPrivateKey() (crypto.PrivateKey, error) {
+func NewPrivateKey() (*ecdsa.PrivateKey, error) {
 	return ecdsa.GenerateKey(EllipticCurve, rand.Reader)
 }
 
 // ReadPrivateKey loads private key from file
 func ReadPrivateKey(filename string) (crypto.PrivateKey, error) {
-	b, err := ioutil.ReadFile(filename) // #nosec: G304
+	raw, err := fs.Read(filename)
 	if err != nil {
 		return nil, err
 	}
-	return UnmarshalPrivateKey(string(b))
+	return UnmarshalPrivateKey(raw)
 }
 
-// UnmarshalPrivateKey parses private key from PEM-encoded bytes
+// UnmarshalPrivateKey parses private key from PEM-encoded string
 func UnmarshalPrivateKey(raw string) (crypto.PrivateKey, error) {
-	block, _ := pem.Decode([]byte(raw))
-	if block == nil {
-		return nil, errors.New("failed to parse private key: invalid PEM")
+	block, err := decode(raw)
+	if err != nil {
+		return nil, err
 	}
 	return x509.ParseECPrivateKey(block.Bytes)
+}
+
+// WritePrivateKey saves private key to file
+func WritePrivateKey(filename string, key crypto.PrivateKey) error {
+	raw, err := MarshalPrivateKey(key)
+	if err != nil {
+		return err
+	}
+	return fs.Write(filename, raw)
+}
+
+// MarshalPrivateKey returns PEM encoding of key
+func MarshalPrivateKey(key crypto.PrivateKey) (string, error) {
+	var b []byte
+	var err error
+	var t PEMType
+
+	switch k := key.(type) {
+	case *ecdsa.PrivateKey:
+		t = PEMTypeECPrivateKey
+		b, err = x509.MarshalECPrivateKey(k)
+	default:
+		return "", fmt.Errorf("unsupported private key type: %T", key)
+	}
+	if err != nil {
+		return "", err
+	}
+
+	return encode(t, b), nil
+}
+
+// WritePublicKey saves public key to file
+func WritePublicKey(filename string, key crypto.PublicKey) error {
+	raw, err := MarshalPublicKey(key)
+	if err != nil {
+		return err
+	}
+	return fs.Write(filename, raw)
 }
 
 // MarshalPublicKey returns PEM encoding of key
@@ -45,10 +86,23 @@ func MarshalPublicKey(key crypto.PublicKey) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return encode(PEMTypePublicKey, b), nil
+}
 
-	block := &pem.Block{
-		Type:  pemTypePublicKey,
-		Bytes: b,
+// WritePublicKeySSH saves public key to file in OpenSSH format
+func WritePublicKeySSH(filename string, key crypto.PublicKey) error {
+	raw, err := MarshalPublicKeySSH(key)
+	if err != nil {
+		return err
 	}
-	return string(pem.EncodeToMemory(block)), nil
+	return fs.Write(filename, raw)
+}
+
+// MarshalPublicKeySSH returns OpenSSH encoding of key
+func MarshalPublicKeySSH(key crypto.PublicKey) (string, error) {
+	pub, err := ssh.NewPublicKey(key)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(pub.Marshal()), nil
 }

@@ -18,5 +18,4 @@
 *.sqlite3
 
 # Test Certificates and Keys
-testdata/pki/*.crt
-testdata/pki/*.key
+testdata/pki/*

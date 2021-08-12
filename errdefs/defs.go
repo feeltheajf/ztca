@@ -13,6 +13,7 @@ const (
 	ErrInvalidParameter ErrorType = "invalid parameter"
 	ErrUnauthorized     ErrorType = "unauthorized"
 	ErrForbidden        ErrorType = "forbidden"
+	ErrConflict         ErrorType = "conflict"
 	ErrNotImplemented   ErrorType = "not implemented"
 	ErrUnknown          ErrorType = "unknown"
 )
@@ -68,6 +69,11 @@ func Unauthorized(err interface{}, args ...interface{}) Error {
 // Forbidden signals that the requested action cannot be performed under any circumstances
 func Forbidden(err interface{}, args ...interface{}) Error {
 	return new(err, ErrForbidden, args...)
+}
+
+// Conflict signals that the requested action cannot be performed in current system state
+func Conflict(err interface{}, args ...interface{}) Error {
+	return new(err, ErrConflict, args...)
 }
 
 // NotImplemented signals that the requested action/feature is not implemented on the system as configured

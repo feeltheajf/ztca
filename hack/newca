@@ -6,4 +6,8 @@ KEY="$OUT/ca.key"
 
 openssl ecparam -name prime256v1 -genkey -noout -out "$KEY"
 
-openssl req -new -sha256 -x509 -subj '/CN=autotest' -key "$KEY" -out "$CRT"
+openssl req -new -x509 -sha256 \
+    -subj '/CN=ZTCA' \
+    -addext 'keyUsage = keyCertSign, cRLSign' \
+    -key "$KEY" \
+    -out "$CRT"

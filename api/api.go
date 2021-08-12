@@ -28,7 +28,6 @@ type HTTP struct {
 }
 
 func Serve() error {
-	// TODO mTLS support
 	log.Info().
 		Str("address", server.Addr).
 		Msg("running HTTP server")
@@ -60,7 +59,8 @@ func setupRoutes(cfg *HTTP) error {
 	api := r.Group("/api")
 	v1 := api.Group("/v1")
 	{
-		v1.POST("/yubikey", yubikey)
+		v1.POST("/certs/:username", issueCertificate)
+		v1.DELETE("/certs/:username", revokeCertificate)
 	}
 
 	server.Handler = r

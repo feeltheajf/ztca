@@ -5,69 +5,87 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/asn1"
 	"fmt"
-	"math/big"
+	"os"
+	"sync"
 	"time"
-)
 
-const (
-	pemTypeCertificate = "CERTIFICATE"
-	pemTypePublicKey   = "PUBLIC KEY"
+	"github.com/rs/zerolog/log"
+
+	"github.com/feeltheajf/ztca/dto"
+	"github.com/feeltheajf/ztca/errdefs"
+	"github.com/feeltheajf/ztca/fs"
 )
 
 var (
+	lock   sync.RWMutex
+	config *Config
+
 	caCrt *x509.Certificate
 	caKey crypto.PrivateKey
 
-	defaultKeyUsageCA = x509.KeyUsageCertSign | x509.KeyUsageCRLSign
-
-	// TODO fix key usages
-	defaultKeyUsageProxy    = x509.KeyUsageDigitalSignature
-	defaultExtKeyUsageProxy = []x509.ExtKeyUsage{
+	defaultKeyUsageCA        = x509.KeyUsageCertSign | x509.KeyUsageCRLSign
+	defaultKeyUsageClient    = x509.KeyUsageDigitalSignature
+	defaultExtKeyUsageClient = []x509.ExtKeyUsage{
 		x509.ExtKeyUsageClientAuth,
-		x509.ExtKeyUsageServerAuth,
 	}
 
-	defaultExpirationYears = 1
+	defaultUpdateCRL = 4 * time.Hour
+
+	oidCRLReason = asn1.ObjectIdentifier{2, 5, 29, 21}
 )
 
+// Config holds CA configuration
 type Config struct {
-	CA *CA `yaml:"ca"`
+	Certificate       string `yaml:"certificate"`
+	PrivateKey        string `yaml:"privateKey"`
+	ExpirationDays    int    `yaml:"expirationDays"`
+	CertificateURL    string `yaml:"certificateUrl" bind:"required"`
+	CRL               string `yaml:"crl"`
+	CRLExpirationDays int    `yaml:"crlExpirationDays"`
+	CRLURL            string `yaml:"crlUrl" bind:"required"`
 }
 
-type CA struct {
-	Certificate string `yaml:"certificate"`
-	PrivateKey  string `yaml:"privateKey"`
-}
-
+// Setup initializes CA
 func Setup(cfg *Config) (err error) {
-	caCrt, err = ReadCertificate(cfg.CA.Certificate)
+	config = cfg
+
+	caCrt, err = ReadCertificate(cfg.Certificate)
 	if err != nil {
 		return err
 	}
 
-	caKey, err = ReadPrivateKey(cfg.CA.PrivateKey)
+	caKey, err = ReadPrivateKey(cfg.PrivateKey)
 	if err != nil {
 		return err
 	}
 
+	if err := NewRevocationList(); err != nil {
+		return err
+	}
+
+	go updateCRL()
 	return nil
 }
 
-func NewCertificate(template *x509.Certificate, pub crypto.PublicKey) (*x509.Certificate, error) {
+// NewCertificate issues a new certificate using the given template
+func NewCertificate(template *x509.Certificate, pub crypto.PublicKey) (*dto.Certificate, error) {
 	template.BasicConstraintsValid = true
-	template.PermittedDNSDomainsCritical = true
 
 	if template.NotBefore.IsZero() {
 		template.NotBefore = time.Now()
 	}
 
 	if template.NotAfter.IsZero() {
-		template.NotAfter = template.NotBefore.AddDate(defaultExpirationYears, 0, 0)
+		template.NotAfter = template.NotBefore.AddDate(0, 0, config.ExpirationDays)
 	}
 
-	template.KeyUsage = defaultKeyUsageProxy
-	template.ExtKeyUsage = defaultExtKeyUsageProxy
+	template.KeyUsage = defaultKeyUsageClient
+	template.ExtKeyUsage = defaultExtKeyUsageClient
+	template.SerialNumber = random()
+	template.IssuingCertificateURL = []string{config.CertificateURL}
+	template.CRLDistributionPoints = []string{config.CRLURL}
 
 	if template.Equal(caCrt) {
 		template.IsCA = true
@@ -75,23 +93,26 @@ func NewCertificate(template *x509.Certificate, pub crypto.PublicKey) (*x509.Cer
 		template.ExtKeyUsage = nil
 	}
 
-	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
-	if err != nil {
-		return nil, err
-	}
-	template.SerialNumber = serialNumber
-
-	der, err := x509.CreateCertificate(rand.Reader, template, caCrt, pub, caKey)
+	b, err := x509.CreateCertificate(rand.Reader, template, caCrt, pub, caKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create certificate: %s", err)
 	}
 
-	return x509.ParseCertificate(der)
+	crt := &dto.Certificate{
+		Raw:          encode(PEMTypeCertificate, b),
+		SerialNumber: MarshalCertificateSerial(template.SerialNumber),
+		ExpiresAt:    template.NotAfter,
+		Username:     template.Subject.CommonName,
+		DeviceSerial: template.Subject.SerialNumber,
+	}
+	return crt, nil
 }
 
-type TemplateOption func(*x509.Certificate) error
+// CertificateOption are used for easier template generation
+type CertificateOption func(*x509.Certificate) error
 
-func NewTemplate(opts ...TemplateOption) (*x509.Certificate, error) {
+// NewTemplate generates new x509 certificate with the given options
+func NewTemplate(opts ...CertificateOption) (*x509.Certificate, error) {
 	template := &x509.Certificate{}
 	for _, opt := range opts {
 		if err := opt(template); err != nil {
@@ -102,17 +123,74 @@ func NewTemplate(opts ...TemplateOption) (*x509.Certificate, error) {
 	return template, nil
 }
 
-func WithName(name pkix.Name) TemplateOption {
+// WithName sets certificate subject to the given PKIX name
+func WithName(name pkix.Name) CertificateOption {
 	return func(template *x509.Certificate) error {
 		template.Subject = name
 		return nil
 	}
 }
 
-func WithCommonName(commonName string) TemplateOption {
-	return WithName(
-		pkix.Name{
-			CommonName: commonName,
+// Revoke given certificate
+func Revoke(crt *dto.Certificate, reason CRLReason, when time.Time) error {
+	if reason == "" {
+		reason = CRLReasonUnspecified
+	}
+
+	if when.IsZero() {
+		when = time.Now()
+	}
+
+	revoke := pkix.RevokedCertificate{
+		SerialNumber:   UnmarshalCertificateSerial(crt.SerialNumber),
+		RevocationTime: when,
+		Extensions: []pkix.Extension{
+			{
+				Id:    oidCRLReason,
+				Value: []byte(reason),
+			},
 		},
-	)
+	}
+	return NewRevocationList(revoke)
+}
+
+// NewRevocationList issues a new certificate revocation list
+func NewRevocationList(revoke ...pkix.RevokedCertificate) error {
+	lock.Lock()
+	defer lock.Unlock()
+
+	crl := new(x509.RevocationList)
+	if _, err := os.Stat(config.CRL); os.IsNotExist(err) {
+		log.Warn().Str("crl", config.CRL).Msg("crl not found")
+	} else {
+		crl, err = ReadRevocationList(config.CRL)
+		if err != nil {
+			return errdefs.Unknown("failed to load crl").CausedBy(err)
+		}
+	}
+
+	now := time.Now()
+	crl.Number = random()
+	crl.ThisUpdate = now
+	crl.NextUpdate = now.AddDate(0, 0, config.CRLExpirationDays)
+	crl.RevokedCertificates = append(crl.RevokedCertificates, revoke...)
+
+	b, err := x509.CreateRevocationList(rand.Reader, crl, caCrt, caKey.(crypto.Signer))
+	if err != nil {
+		return errdefs.Unknown("failed to create crl").CausedBy(err)
+	}
+
+	if err := fs.Write(config.CRL, encode(PEMTypeRevocationList, b)); err != nil {
+		return errdefs.Unknown("failed to save crl").CausedBy(err)
+	}
+
+	return nil
+}
+
+func updateCRL() {
+	for range time.Tick(defaultUpdateCRL) {
+		if err := NewRevocationList(); err != nil {
+			log.Error().Err(err).Msg("failed to update crl")
+		}
+	}
 }

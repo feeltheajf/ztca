@@ -8,8 +8,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// TODO re-implement as file storage + AD/openldap?
-
 const (
 	levelDebug = "sql"
 	levelInfo  = "log"
@@ -18,7 +16,6 @@ const (
 var (
 	all = []interface{}{
 		&Certificate{},
-		&User{},
 	}
 
 	db *gorm.DB

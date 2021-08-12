@@ -32,6 +32,14 @@ func IsForbidden(err error) bool {
 	return false
 }
 
+// IsConflict returns true if the passed in error is an errConflict
+func IsConflict(err error) bool {
+	if e, ok := err.(Error); ok {
+		return e.Type == ErrConflict
+	}
+	return false
+}
+
 // IsNotImplemented returns true if the passed in error is an errNotImplemented
 func IsNotImplemented(err error) bool {
 	if e, ok := err.(Error); ok {

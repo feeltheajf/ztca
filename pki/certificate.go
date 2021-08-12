@@ -2,34 +2,38 @@ package pki
 
 import (
 	"crypto/x509"
-	"encoding/pem"
-	"errors"
-	"io/ioutil"
+
+	"github.com/feeltheajf/ztca/fs"
 )
 
 // ReadCertificate loads certificate from file
 func ReadCertificate(filename string) (*x509.Certificate, error) {
-	b, err := ioutil.ReadFile(filename) // #nosec: G304
+	raw, err := fs.Read(filename)
 	if err != nil {
 		return nil, err
 	}
-	return UnmarshalCertificate(string(b))
+	return UnmarshalCertificate(raw)
 }
 
-// UnmarshalCertificate parses certificate from PEM-encoded bytes
+// UnmarshalCertificate parses certificate from PEM-encoded string
 func UnmarshalCertificate(raw string) (*x509.Certificate, error) {
-	block, _ := pem.Decode([]byte(raw))
-	if block == nil {
-		return nil, errors.New("failed to parse certificate: invalid PEM")
+	block, err := decode(raw)
+	if err != nil {
+		return nil, err
 	}
 	return x509.ParseCertificate(block.Bytes)
 }
 
-// MarshalCertificate returns PEM encoding of crt
-func MarshalCertificate(crt *x509.Certificate) (string, error) {
-	block := &pem.Block{
-		Type:  pemTypeCertificate,
-		Bytes: crt.Raw,
+// WriteCertificate saves certificate to file
+func WriteCertificate(filename string, crt *x509.Certificate) error {
+	raw, err := MarshalCertificate(crt)
+	if err != nil {
+		return err
 	}
-	return string(pem.EncodeToMemory(block)), nil
+	return fs.Write(filename, raw)
+}
+
+// MarshalCertificate returns PEM encoding of certificate
+func MarshalCertificate(crt *x509.Certificate) (string, error) {
+	return encode(PEMTypeCertificate, crt.Raw), nil
 }

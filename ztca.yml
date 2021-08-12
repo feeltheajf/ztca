@@ -5,13 +5,16 @@ api:
   http:
     address: 127.0.0.1:9443
 
-# TODO storage
 db:
   url: ztca.sqlite3
   driver: sqlite3
   automigrate: yes
 
-pki:
-  ca:
-    certificate: testdata/pki/ca.crt
-    privateKey: testdata/pki/ca.key
+ca:
+  certificate: testdata/pki/ca.crt
+  privateKey: testdata/pki/ca.key
+  expirationDays: 365
+  certificateUrl: https://ztca.com/ztca.crt
+  crl: testdata/pki/ca.crl
+  crlExpirationDays: 3
+  crlUrl: https://ztca.com/ztca.crl

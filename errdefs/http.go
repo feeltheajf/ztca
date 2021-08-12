@@ -20,6 +20,8 @@ func GetStatusCode(err error) int {
 		statusCode = http.StatusUnauthorized
 	case IsForbidden(err):
 		statusCode = http.StatusForbidden
+	case IsConflict(err):
+		statusCode = http.StatusConflict
 	case IsNotImplemented(err):
 		statusCode = http.StatusNotImplemented
 	default:
@@ -57,6 +59,8 @@ func FromStatusCode(statusCode int, err error) error {
 		err = Unauthorized(text).CausedBy(cause)
 	case http.StatusForbidden:
 		err = Forbidden(text).CausedBy(cause)
+	case http.StatusConflict:
+		err = Conflict(text).CausedBy(cause)
 	case http.StatusNotImplemented:
 		err = NotImplemented(text).CausedBy(cause)
 	default:

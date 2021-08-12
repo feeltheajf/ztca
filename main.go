@@ -13,24 +13,29 @@ import (
 	"github.com/feeltheajf/ztca/pki"
 )
 
-var cmd = &cobra.Command{
-	Use: config.App,
-	Run: serve,
-}
+var (
+	cfg *config.Config
 
-var flags = struct {
-	config string
-}{}
+	cmd = &cobra.Command{
+		Use: config.App,
+		Run: serve,
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			var err error
+			cfg, err = config.Load(flags.config)
+			fatal(err)
+		},
+	}
+
+	flags = struct {
+		config string
+	}{}
+)
 
 func serve(cmd *cobra.Command, args []string) {
-	cfg, err := config.Load(flags.config)
-	fatal(err)
-
 	fatal(log.Setup(cfg.Log))
 	fatal(dto.Setup(cfg.DB))
-	fatal(pki.Setup(cfg.PKI))
+	fatal(pki.Setup(cfg.CA))
 	fatal(api.Setup(cfg.API))
-
 	fatal(api.Serve())
 }
 

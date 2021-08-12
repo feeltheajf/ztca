@@ -1,5 +1,6 @@
 APP = ztca
 COV = coverage.out
+TAG = v$(shell cat VERSION)
 
 GIN_PORT ?= 5000
 APP_PORT ?= 3000
@@ -9,7 +10,7 @@ dep:
 	go mod tidy && go mod vendor
 
 .PHONY: dev
-dev:
+dev: dep
 	gin \
 		--all \
 		--immediate \
@@ -22,6 +23,11 @@ dev:
 		--appPort $(APP_PORT) \
 		run \
 		--
+
+.PHONY: release
+release:
+	git tag -a $(TAG) -m "$(TAG) release"
+	git push origin $(TAG)
 
 .PHONY: test
 test: unittest gosec trufflehog
