@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	Certificates = &certificatesService{}
+	Certificates = &certificateService{}
 )
 
 type Certificate struct {
@@ -18,17 +18,17 @@ type Certificate struct {
 	DeviceSerial string `json:"deviceSerial"`
 }
 
-type certificatesService service
+type certificateService service
 
-func (cs *certificatesService) Save(crt *Certificate) error {
+func (cs *certificateService) Save(crt *Certificate) error {
 	return db.Create(crt).Error
 }
 
-func (cs *certificatesService) Load(username string) (*Certificate, error) {
+func (cs *certificateService) Load(username string) (*Certificate, error) {
 	crt := new(Certificate)
 	return crt, db.Where("username = ?", username).First(crt).Error
 }
 
-func (cs *certificatesService) Delete(crt *Certificate) error {
+func (cs *certificateService) Delete(crt *Certificate) error {
 	return db.Delete(crt).Error
 }

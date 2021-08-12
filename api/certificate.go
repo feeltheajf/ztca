@@ -14,8 +14,8 @@ import (
 )
 
 type CertificateRequest struct {
-	Att    string `form:"att" binding:"required"`
 	IntAtt string `form:"intAtt" binding:"required"`
+	Att    string `form:"att" binding:"required"`
 }
 
 func issueCertificate(c *gin.Context) {
@@ -32,15 +32,15 @@ func issueCertificate(c *gin.Context) {
 		return
 	}
 
-	att, err := pki.UnmarshalCertificate(q.Att)
-	if err != nil {
-		handle(c, errdefs.InvalidParameter("bad attestation certificate").CausedBy(err))
-		return
-	}
-
 	intAtt, err := pki.UnmarshalCertificate(q.IntAtt)
 	if err != nil {
 		handle(c, errdefs.InvalidParameter("bad intermediate attestation certificate").CausedBy(err))
+		return
+	}
+
+	att, err := pki.UnmarshalCertificate(q.Att)
+	if err != nil {
+		handle(c, errdefs.InvalidParameter("bad attestation certificate").CausedBy(err))
 		return
 	}
 
@@ -50,7 +50,7 @@ func issueCertificate(c *gin.Context) {
 		return
 	}
 
-	t, err := pki.NewTemplate(pki.WithName(pkix.Name{
+	template, err := pki.NewTemplate(pki.WithName(pkix.Name{
 		CommonName:   username,
 		SerialNumber: pki.MarshalYubiKeySerial(meta.Serial),
 	}))
@@ -59,7 +59,7 @@ func issueCertificate(c *gin.Context) {
 		return
 	}
 
-	x509, err := pki.NewCertificate(t, att.PublicKey)
+	x509, err := pki.NewCertificate(template, att.PublicKey)
 	if err != nil {
 		handle(c, errdefs.Unknown("failed to issue certificate").CausedBy(err))
 		return
