@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
+	zerolog "github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"github.com/feeltheajf/ztca/api"
@@ -14,16 +14,9 @@ import (
 )
 
 var (
-	cfg *config.Config
-
 	cmd = &cobra.Command{
 		Use: config.App,
 		Run: serve,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			var err error
-			cfg, err = config.Load(flags.config)
-			fatal(err)
-		},
 	}
 
 	flags = struct {
@@ -32,6 +25,8 @@ var (
 )
 
 func serve(cmd *cobra.Command, args []string) {
+	cfg, err := config.Load(flags.config)
+	fatal(err)
 	fatal(log.Setup(cfg.Log))
 	fatal(dto.Setup(cfg.DB))
 	fatal(pki.Setup(cfg.CA))
@@ -41,8 +36,7 @@ func serve(cmd *cobra.Command, args []string) {
 
 func fatal(err error) {
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		zerolog.Fatal().Err(err).Msg("fatal")
 	}
 }
 
