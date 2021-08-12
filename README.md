@@ -2,4 +2,4 @@
 
 ## To Do
 
-- Basic OpenLDAP setup
+- README
