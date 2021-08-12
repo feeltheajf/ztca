@@ -18,3 +18,4 @@ ca:
   crl: testdata/pki/ca.crl
   crlExpirationDays: 3
   crlUrl: https://ztca.com/ztca.crl
+  crlNumber: testdata/pki/crlnumber

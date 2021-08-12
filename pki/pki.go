@@ -2,10 +2,12 @@ package pki
 
 import (
 	"crypto"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"math/big"
 	"os"
 	"sync"
 	"time"
@@ -24,7 +26,7 @@ var (
 	config *Config
 
 	caCrt *x509.Certificate
-	caKey crypto.PrivateKey
+	caKey *ecdsa.PrivateKey
 
 	defaultKeyUsageCA        = x509.KeyUsageCertSign | x509.KeyUsageCRLSign
 	defaultKeyUsageClient    = x509.KeyUsageDigitalSignature
@@ -46,6 +48,7 @@ type Config struct {
 	CRL               string `yaml:"crl"`
 	CRLExpirationDays int    `yaml:"crlExpirationDays"`
 	CRLURL            string `yaml:"crlUrl" bind:"required"`
+	CRLNumber         string `yaml:"crlNumber" bind:"required"`
 }
 
 // Setup initializes CA
@@ -184,13 +187,24 @@ func NewRevocationList(revoke ...pkix.RevokedCertificate) error {
 		}
 	}
 
+	srl := new(big.Int)
+	if _, err := os.Stat(config.CRLNumber); os.IsNotExist(err) {
+		log.Warn().Str("crl", config.CRLNumber).Msg("crl number not found")
+	} else {
+		srl, err = ReadSerial(config.CRLNumber)
+		if err != nil {
+			return errdefs.Unknown("failed to load crl number").CausedBy(err)
+		}
+	}
+	srl = srl.Add(srl, big.NewInt(1))
+
 	now := time.Now()
-	crl.Number = random()
+	crl.Number = srl
 	crl.ThisUpdate = now
 	crl.NextUpdate = now.AddDate(0, 0, config.CRLExpirationDays)
 	crl.RevokedCertificates = append(crl.RevokedCertificates, revoke...)
 
-	b, err := x509.CreateRevocationList(rand.Reader, crl, caCrt, caKey.(crypto.Signer))
+	b, err := x509.CreateRevocationList(rand.Reader, crl, caCrt, caKey)
 	if err != nil {
 		return errdefs.Unknown("failed to create crl").CausedBy(err)
 	}
@@ -199,8 +213,12 @@ func NewRevocationList(revoke ...pkix.RevokedCertificate) error {
 		return errdefs.Unknown("failed to save crl").CausedBy(err)
 	}
 
+	if err := WriteSerial(config.CRLNumber, srl); err != nil {
+		return errdefs.Unknown("failed to save crl number").CausedBy(err)
+	}
+
 	ctx.Info().
-		Str("number", crl.Number.String()).
+		Str("number", MarshalSerial(srl)).
 		Int("revoked", len(crl.RevokedCertificates)).
 		Msg("crl issued")
 	return nil
