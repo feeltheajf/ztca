@@ -1,7 +1,10 @@
 package dto
 
 import (
+	"crypto/x509"
 	"time"
+
+	"github.com/feeltheajf/ztca/pki"
 )
 
 var (
@@ -16,6 +19,14 @@ type Certificate struct {
 	// user metadata
 	Username     string `json:"username"`
 	DeviceSerial string `json:"deviceSerial"`
+}
+
+func (crt *Certificate) X509() *x509.Certificate {
+	x509, err := pki.UnmarshalCertificate(crt.Raw)
+	if err != nil {
+		panic(err)
+	}
+	return x509
 }
 
 type certificateService service

@@ -101,7 +101,7 @@ func revokeCertificate(c *gin.Context) {
 	username := c.Param("username")
 	crt, err := dto.Certificates.Load(username)
 	if err == nil {
-		if err := pki.Revoke(crt, q.Reason, time.Now()); err != nil {
+		if err := pki.Revoke(crt.X509(), q.Reason, time.Now()); err != nil {
 			handle(c, errdefs.Unknown("failed to revoke certificate").CausedBy(err))
 			return
 		}

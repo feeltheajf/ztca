@@ -15,7 +15,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/feeltheajf/ztca/dto"
 	"github.com/feeltheajf/ztca/errdefs"
 	"github.com/feeltheajf/ztca/fs"
 )
@@ -140,7 +139,7 @@ func WithName(name pkix.Name) CertificateOption {
 }
 
 // Revoke given certificate
-func Revoke(crt *dto.Certificate, reason CRLReason, when time.Time) error {
+func Revoke(crt *x509.Certificate, reason CRLReason, when time.Time) error {
 	if reason == "" {
 		reason = CRLReasonUnspecified
 	}
@@ -150,7 +149,7 @@ func Revoke(crt *dto.Certificate, reason CRLReason, when time.Time) error {
 	}
 
 	revoke := pkix.RevokedCertificate{
-		SerialNumber:   UnmarshalSerial(crt.SerialNumber),
+		SerialNumber:   crt.SerialNumber,
 		RevocationTime: when,
 		Extensions: []pkix.Extension{
 			{
@@ -165,10 +164,10 @@ func Revoke(crt *dto.Certificate, reason CRLReason, when time.Time) error {
 	}
 
 	ctx.Info().
-		Str("serial", crt.SerialNumber).
-		Str("username", crt.Username).
-		Str("device_serial", crt.DeviceSerial).
-		Msg("certificate revoked")
+		Str("serial", MarshalSerial(crt.SerialNumber)).
+		Str("username", crt.Subject.CommonName).
+		Str("device_serial", crt.Subject.SerialNumber).
+		Msg("certificate issued")
 	return nil
 }
 
