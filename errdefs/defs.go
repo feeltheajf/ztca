@@ -39,10 +39,12 @@ func (e Error) CausedBy(cause error) Error {
 	return e
 }
 
-func new(err interface{}, etype ErrorType, args ...interface{}) Error {
+func new(err interface{}, etype ErrorType, a ...interface{}) Error {
 	var text string
-	text, ok := err.(string)
-	if !ok {
+	switch t := err.(type) {
+	case string:
+		text = fmt.Sprintf(t, a...)
+	default:
 		text = fmt.Sprintf("%v", err)
 	}
 	return Error{
@@ -52,36 +54,36 @@ func new(err interface{}, etype ErrorType, args ...interface{}) Error {
 }
 
 // NotFound signals that the requested object doesn't exist
-func NotFound(err interface{}, args ...interface{}) Error {
-	return new(err, ErrNotFound, args...)
+func NotFound(err interface{}, a ...interface{}) Error {
+	return new(err, ErrNotFound, a...)
 }
 
 // InvalidParameter signals that the user input is invalid
-func InvalidParameter(err interface{}, args ...interface{}) Error {
-	return new(err, ErrInvalidParameter, args...)
+func InvalidParameter(err interface{}, a ...interface{}) Error {
+	return new(err, ErrInvalidParameter, a...)
 }
 
 // Unauthorized is used to signify that the user is not authorized to perform a specific action
-func Unauthorized(err interface{}, args ...interface{}) Error {
-	return new(err, ErrUnauthorized, args...)
+func Unauthorized(err interface{}, a ...interface{}) Error {
+	return new(err, ErrUnauthorized, a...)
 }
 
 // Forbidden signals that the requested action cannot be performed under any circumstances
-func Forbidden(err interface{}, args ...interface{}) Error {
-	return new(err, ErrForbidden, args...)
+func Forbidden(err interface{}, a ...interface{}) Error {
+	return new(err, ErrForbidden, a...)
 }
 
 // Conflict signals that the requested action cannot be performed in current system state
-func Conflict(err interface{}, args ...interface{}) Error {
-	return new(err, ErrConflict, args...)
+func Conflict(err interface{}, a ...interface{}) Error {
+	return new(err, ErrConflict, a...)
 }
 
 // NotImplemented signals that the requested action/feature is not implemented on the system as configured
-func NotImplemented(err interface{}, args ...interface{}) Error {
-	return new(err, ErrNotImplemented, args...)
+func NotImplemented(err interface{}, a ...interface{}) Error {
+	return new(err, ErrNotImplemented, a...)
 }
 
 // Unknown signals that the kind of error that occurred is not known
-func Unknown(err interface{}, args ...interface{}) Error {
-	return new(err, ErrUnknown, args...)
+func Unknown(err interface{}, a ...interface{}) Error {
+	return new(err, ErrUnknown, a...)
 }
